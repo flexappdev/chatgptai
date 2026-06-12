@@ -2,9 +2,11 @@
 
 A faithful ChatGPT product surface — chats with streaming, projects with memory, canvas with split-screen edit/preview, skills, and connectors. Part of Mat Siems' flexappdev fleet.
 
+- **Prod:** https://chatgptai-three.vercel.app
 - **Repo:** https://github.com/flexappdev/chatgptai
 - **Local:** `~/APPS/chatgptai` · port **17002**
 - **Stack:** Next.js 16.2.9 · React 19 · TypeScript strict · Tailwind v4 (layout only) · shadcn/ui-ready · Supabase (Postgres + Auth + Storage + RLS) · OpenRouter
+- **Vercel project:** `prj_zEUzrJwH5UqPm0GZOamns53Zl5Gk` (matsiems team)
 
 ## Features (v1)
 
@@ -73,11 +75,11 @@ Apply with `/abc-supabase chatgptai migrate <file>`.
 | `NEXT_PUBLIC_GA_ID` | optional | activate via `/abc-ga sync chatgptai G-XXXX` |
 | `BRAVE_API_KEY` | optional | enables real Web Search (otherwise demo mode) |
 
-## Owed before prod ship
+## Deployment state
 
-- [ ] Apply 3 Supabase migrations to the shared `tciqizkiseraumwdzxya` project
-- [ ] Enable Google OAuth provider in Supabase dashboard
-- [ ] `/abc-vercel chatgptai init` then `env sync` + first deploy
+- [x] 3 Supabase migrations applied to `tciqizkiseraumwdzxya` via Management API (8 tables, RLS, storage bucket, GIN FTS, pg_trgm) — 2026-06-12
+- [x] Vercel project linked to matsiems team, 5 prod env vars synced, first deploy LIVE — 2026-06-12
+- [ ] Enable Google OAuth provider in Supabase dashboard (manual)
 - [ ] `/abc-ga sync chatgptai G-XXXX` once a GA4 measurement id is allocated
 - [ ] Optional: `BRAVE_API_KEY` in Vercel env to flip web_search from demo → live
 
