@@ -13,9 +13,12 @@
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.46.1",
     "clsx": "^2.1.1",
+    "nanoid": "^5.1.11",
     "next": "16.2.9",
     "react": "19.0.0",
     "react-dom": "19.0.0",
+    "react-markdown": "^9.1.0",
+    "remark-gfm": "^4.0.1",
     "tailwind-merge": "^2.5.4"
   },
   "devDependencies": {
