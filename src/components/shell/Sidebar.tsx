@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { RecentsList } from "./RecentsList";
+import type { ChatRow } from "@/lib/database.types";
 
 const NAV = [
   { href: "/", label: "Chats", icon: "💬" },
@@ -12,7 +14,7 @@ const NAV = [
   { href: "/connectors", label: "Connectors", icon: "🔌" },
 ];
 
-export function Sidebar() {
+export function Sidebar({ chats }: { chats: ChatRow[] }) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
@@ -152,18 +154,20 @@ export function Sidebar() {
             Recents
           </div>
         )}
-        {/* RecentsList mounts here in CC-04 */}
-        {!collapsed && (
-          <div
+        {!collapsed && <RecentsList chats={chats} />}
+        {!collapsed && chats.length >= 20 && (
+          <Link
+            href="/history"
             style={{
-              fontSize: 13,
+              display: "block",
+              padding: "8px 4px",
+              fontSize: 12,
               color: "var(--text-muted)",
-              padding: "4px",
-              lineHeight: 1.5,
+              textDecoration: "underline",
             }}
           >
-            No chats yet.
-          </div>
+            View all
+          </Link>
         )}
       </div>
 
