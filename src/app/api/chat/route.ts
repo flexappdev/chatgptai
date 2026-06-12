@@ -11,6 +11,7 @@ import {
 } from "@/lib/openrouter";
 import { BASE_SYSTEM_PROMPT } from "@/lib/system-prompt";
 import { TextdocStreamParser, type TextdocAttrs } from "@/lib/canvas/parser";
+import { EXECUTORS, toolDefsFor } from "@/lib/connectors/executors";
 
 export const runtime = "edge";
 
@@ -22,6 +23,7 @@ type PostBody = {
   message: string;
   model?: string;
   skillSlug?: string;
+  enabledTools?: string[];
 };
 
 async function getSupabase() {
@@ -207,6 +209,107 @@ export async function POST(req: NextRequest) {
         send({ type: "user_persisted", messageId: userMsg?.id ?? null });
       }
 
+      // If any tools are enabled, do a non-stream tool-call round-trip first
+      // and append the tool results to the conversation before streaming the
+      // final answer. Single-iteration loop for v1 (cap = 1 tool round).
+      const tools = toolDefsFor(body.enabledTools ?? []);
+      if (tools.length > 0) {
+        try {
+          const probeRes = await fetch(OPENROUTER_URL, {
+            method: "POST",
+            headers: openRouterHeaders(),
+            body: JSON.stringify({
+              model,
+              messages,
+              tools,
+              tool_choice: "auto",
+              stream: false,
+            }),
+          });
+          if (probeRes.ok) {
+            const probeJson = (await probeRes.json()) as {
+              choices?: {
+                message?: {
+                  content?: string | null;
+                  tool_calls?: {
+                    id: string;
+                    type: "function";
+                    function: { name: string; arguments: string };
+                  }[];
+                };
+              }[];
+            };
+            const probeMessage = probeJson.choices?.[0]?.message;
+            const toolCalls = probeMessage?.tool_calls ?? [];
+            if (toolCalls.length > 0) {
+              // Append assistant tool_call message
+              messages.push({
+                role: "assistant",
+                // OpenAI-compatible: keep content empty when only tool_calls
+                content: probeMessage?.content ?? "",
+                // tool_calls field accepted by OpenRouter for the loop
+                // (cast to any since our ChatMessage type doesn't model it)
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                tool_calls: toolCalls,
+              } as unknown as ChatMessage);
+              for (const tc of toolCalls) {
+                let argsObj: Record<string, unknown> = {};
+                try {
+                  argsObj = JSON.parse(tc.function.arguments ?? "{}");
+                } catch {
+                  argsObj = {};
+                }
+                const executor = EXECUTORS[tc.function.name];
+                const result = executor
+                  ? await executor(argsObj)
+                  : { error: `Unknown tool: ${tc.function.name}` };
+                send({
+                  type: "tool_call",
+                  name: tc.function.name,
+                  arguments: tc.function.arguments,
+                  result: JSON.stringify(result).slice(0, 4000),
+                });
+                messages.push({
+                  role: "tool",
+                  // OpenAI-compatible: tool_call_id required
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  tool_call_id: tc.id,
+                  content: JSON.stringify(result).slice(0, 8000),
+                } as unknown as ChatMessage);
+              }
+            } else if (probeMessage?.content) {
+              // Model didn't call any tool — emit its content as deltas and finish.
+              for (const ch of chunkString(probeMessage.content, 64)) {
+                send({ type: "delta", text: ch });
+              }
+              // Persist & finish
+              const { data: assistantMsg } = await supabase
+                .from("messages")
+                .insert({
+                  user_id: user.id,
+                  chat_id: chatId,
+                  role: "assistant",
+                  content: probeMessage.content,
+                })
+                .select("id")
+                .single();
+              await supabase
+                .from("chats")
+                .update({ last_message_at: new Date().toISOString() })
+                .eq("id", chatId);
+              send({ type: "done", messageId: assistantMsg?.id ?? null });
+              controller.close();
+              if (createdNewChat) {
+                void generateTitle(chatId!, probeMessage.content, userContent);
+              }
+              return;
+            }
+          }
+        } catch (e) {
+          send({ type: "error", message: `Tool probe failed: ${(e as Error).message}` });
+        }
+      }
+
       let upstream: Response;
       try {
         upstream = await fetch(OPENROUTER_URL, {
@@ -231,6 +334,7 @@ export async function POST(req: NextRequest) {
         return;
       }
 
+      // Reader for the final streaming response
       const reader = upstream.body.getReader();
       const decoder = new TextDecoder();
       let buffer = "";
@@ -380,6 +484,14 @@ export async function POST(req: NextRequest) {
       Connection: "keep-alive",
     },
   });
+}
+
+function chunkString(s: string, size: number): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < s.length; i += size) {
+    out.push(s.slice(i, i + size));
+  }
+  return out;
 }
 
 async function generateTitle(chatId: string, assistant: string, userContent: string) {
