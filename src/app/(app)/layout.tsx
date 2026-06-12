@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
+import { CanvasPanel } from "@/components/canvas/CanvasPanel";
 import { getChats } from "@/lib/db";
 
 export default async function AppLayout({
@@ -17,6 +18,7 @@ export default async function AppLayout({
           {children}
         </main>
       </div>
+      <CanvasPanel />
     </div>
   );
 }

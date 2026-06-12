@@ -10,6 +10,7 @@ import {
   type ChatMessage,
 } from "@/lib/openrouter";
 import { BASE_SYSTEM_PROMPT } from "@/lib/system-prompt";
+import { TextdocStreamParser, type TextdocAttrs } from "@/lib/canvas/parser";
 
 export const runtime = "edge";
 
@@ -234,6 +235,35 @@ export async function POST(req: NextRequest) {
       const decoder = new TextDecoder();
       let buffer = "";
       let assistant = "";
+      const textdoc = new TextdocStreamParser();
+      const canvases: Array<{
+        attrs: TextdocAttrs;
+        content: string;
+      }> = [];
+      let activeCanvasIdx = -1;
+
+      const dispatch = (chunk: string) => {
+        if (!chunk) return;
+        for (const evt of textdoc.push(chunk)) {
+          if (evt.kind === "text") {
+            send({ type: "delta", text: evt.text });
+          } else if (evt.kind === "canvas_open") {
+            canvases.push({ attrs: evt.attrs, content: "" });
+            activeCanvasIdx = canvases.length - 1;
+            send({ type: "canvas_open", attrs: evt.attrs, index: activeCanvasIdx });
+          } else if (evt.kind === "canvas_delta") {
+            if (activeCanvasIdx >= 0) {
+              canvases[activeCanvasIdx]!.content += evt.text;
+              send({ type: "canvas_delta", index: activeCanvasIdx, text: evt.text });
+            }
+          } else if (evt.kind === "canvas_close") {
+            if (activeCanvasIdx >= 0) {
+              send({ type: "canvas_close", index: activeCanvasIdx });
+            }
+            activeCanvasIdx = -1;
+          }
+        }
+      };
 
       try {
         while (true) {
@@ -254,17 +284,66 @@ export async function POST(req: NextRequest) {
               const delta = json.choices?.[0]?.delta?.content;
               if (delta) {
                 assistant += delta;
-                send({ type: "delta", text: delta });
+                dispatch(delta);
               }
             } catch {
               /* heartbeat or comment line */
             }
           }
         }
+        // Flush any trailing state in the parser
+        for (const evt of textdoc.flush()) {
+          if (evt.kind === "text") {
+            send({ type: "delta", text: evt.text });
+          } else if (evt.kind === "canvas_delta" && activeCanvasIdx >= 0) {
+            canvases[activeCanvasIdx]!.content += evt.text;
+            send({ type: "canvas_delta", index: activeCanvasIdx, text: evt.text });
+          } else if (evt.kind === "canvas_close") {
+            if (activeCanvasIdx >= 0) {
+              send({ type: "canvas_close", index: activeCanvasIdx });
+            }
+            activeCanvasIdx = -1;
+          }
+        }
       } catch (e) {
         send({ type: "error", message: `Stream read failed: ${(e as Error).message}` });
         controller.close();
         return;
+      }
+
+      // Persist canvases (one row per textdoc, version bumped per identifier)
+      for (let i = 0; i < canvases.length; i++) {
+        const c = canvases[i]!;
+        const { data: existing } = await supabase
+          .from("canvases")
+          .select("version")
+          .eq("identifier", c.attrs.identifier)
+          .order("version", { ascending: false })
+          .limit(1);
+        const nextVersion =
+          ((existing?.[0]?.version as number | undefined) ?? 0) + 1;
+        const { data: row } = await supabase
+          .from("canvases")
+          .insert({
+            user_id: user.id,
+            chat_id: chatId,
+            identifier: c.attrs.identifier,
+            title: c.attrs.title ?? null,
+            type: c.attrs.type,
+            language: c.attrs.language ?? null,
+            content: c.content,
+            version: nextVersion,
+          })
+          .select("id")
+          .single();
+        if (row) {
+          send({
+            type: "canvas_persisted",
+            index: i,
+            canvasId: row.id,
+            version: nextVersion,
+          });
+        }
       }
 
       // Persist assistant message + bump chat

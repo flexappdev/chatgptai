@@ -1,6 +1,20 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useCanvasPanel } from "@/stores/canvasPanel";
+import type { CanvasType, TextdocAttrs } from "@/lib/canvas/parser";
+
+export type CanvasMarker = {
+  index: number;
+  identifier: string;
+  type: CanvasType;
+  title?: string;
+  language?: string;
+  canvasId?: string;
+  version?: number;
+  content: string;
+  streaming?: boolean;
+};
 
 export type ClientMessage = {
   id: string;
@@ -8,12 +22,17 @@ export type ClientMessage = {
   content: string;
   pending?: boolean;
   error?: boolean;
+  canvases?: CanvasMarker[];
 };
 
 type StreamEvent =
   | { type: "chat_created"; chatId: string; userMessageId: string | null }
   | { type: "user_persisted"; messageId: string | null }
   | { type: "delta"; text: string }
+  | { type: "canvas_open"; attrs: TextdocAttrs; index: number }
+  | { type: "canvas_delta"; index: number; text: string }
+  | { type: "canvas_close"; index: number }
+  | { type: "canvas_persisted"; index: number; canvasId: string; version: number }
   | { type: "done"; messageId: string | null }
   | { type: "error"; message: string };
 
@@ -28,6 +47,9 @@ export function useChatStream(opts: {
   const [chatId, setChatId] = useState<string | null>(opts.initialChatId);
   const [streaming, setStreaming] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const openCanvas = useCanvasPanel((s) => s.openCanvas);
+  const appendCanvasDelta = useCanvasPanel((s) => s.appendDelta);
+  const closeCanvasStreaming = useCanvasPanel((s) => s.closeStreaming);
 
   const stop = useCallback(() => {
     abortRef.current?.abort();
@@ -138,6 +160,77 @@ export function useChatStream(opts: {
                   ? { ...m, content: m.content + evt.text }
                   : m,
               ),
+            );
+            break;
+          case "canvas_open": {
+            const marker: CanvasMarker = {
+              index: evt.index,
+              identifier: evt.attrs.identifier,
+              type: evt.attrs.type,
+              title: evt.attrs.title,
+              language: evt.attrs.language,
+              content: "",
+              streaming: true,
+            };
+            setMessages((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? { ...m, canvases: [...(m.canvases ?? []), marker] }
+                  : m,
+              ),
+            );
+            openCanvas({
+              identifier: marker.identifier,
+              type: marker.type,
+              title: marker.title,
+              language: marker.language,
+              content: "",
+              version: 1,
+              streaming: true,
+            });
+            break;
+          }
+          case "canvas_delta":
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== assistantId || !m.canvases) return m;
+                return {
+                  ...m,
+                  canvases: m.canvases.map((c) =>
+                    c.index === evt.index ? { ...c, content: c.content + evt.text } : c,
+                  ),
+                };
+              }),
+            );
+            appendCanvasDelta(evt.text);
+            break;
+          case "canvas_close":
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== assistantId || !m.canvases) return m;
+                return {
+                  ...m,
+                  canvases: m.canvases.map((c) =>
+                    c.index === evt.index ? { ...c, streaming: false } : c,
+                  ),
+                };
+              }),
+            );
+            closeCanvasStreaming();
+            break;
+          case "canvas_persisted":
+            setMessages((prev) =>
+              prev.map((m) => {
+                if (m.id !== assistantId || !m.canvases) return m;
+                return {
+                  ...m,
+                  canvases: m.canvases.map((c) =>
+                    c.index === evt.index
+                      ? { ...c, canvasId: evt.canvasId, version: evt.version }
+                      : c,
+                  ),
+                };
+              }),
             );
             break;
           case "error":
