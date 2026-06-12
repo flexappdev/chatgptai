@@ -1,6 +1,7 @@
 "use client";
 
 import { Markdown } from "./Markdown";
+import { CanvasCard } from "@/components/canvas/CanvasCard";
 import type { ClientMessage } from "@/hooks/useChatStream";
 
 export function Message({ message }: { message: ClientMessage }) {
@@ -42,10 +43,23 @@ export function Message({ message }: { message: ClientMessage }) {
       >
         {message.content ? (
           <Markdown content={message.content} />
-        ) : message.pending ? (
+        ) : message.pending && (!message.canvases || message.canvases.length === 0) ? (
           <BreathingDot />
         ) : null}
         {message.pending && message.content && <InlineCursor />}
+        {message.canvases?.map((c) => (
+          <CanvasCard
+            key={`${c.index}-${c.identifier}`}
+            identifier={c.identifier}
+            title={c.title}
+            type={c.type}
+            language={c.language}
+            content={c.content}
+            streaming={c.streaming}
+            canvasId={c.canvasId}
+            version={c.version}
+          />
+        ))}
       </div>
     </div>
   );
