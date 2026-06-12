@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/shell/Sidebar";
 import { TopBar } from "@/components/shell/TopBar";
 import { CanvasPanel } from "@/components/canvas/CanvasPanel";
+import { CommandPalette } from "@/components/shell/CommandPalette";
 import { getChats } from "@/lib/db";
 
 export default async function AppLayout({
@@ -19,6 +20,7 @@ export default async function AppLayout({
         </main>
       </div>
       <CanvasPanel />
+      <CommandPalette />
     </div>
   );
 }

@@ -2,8 +2,23 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "chatgptai",
+  title: {
+    default: "chatgptai",
+    template: "%s — chatgptai",
+  },
   description: "ChatGPT clone — chats, projects, canvas, skills, connectors.",
+  openGraph: {
+    title: "chatgptai",
+    description: "A faithful ChatGPT product surface, powered by OpenRouter.",
+    type: "website",
+  },
+};
+
+export const viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#212121" },
+  ],
 };
 
 // Inline pre-paint script: read theme cookie before React mounts so we

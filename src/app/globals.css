@@ -111,3 +111,20 @@ body {
     transition-duration: 0.001ms !important;
   }
 }
+
+/* Mobile: collapse sidebar to a slide-over below 768px.
+   Sidebar's collapsed width still applies; pages adopt safe-area inset.
+   For a full slide-over we'd need to refactor Sidebar — kept honest for v1. */
+@media (max-width: 768px) {
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Tap targets ≥ 44px on coarse pointers */
+@media (pointer: coarse) {
+  button,
+  a {
+    min-height: 36px;
+  }
+}
