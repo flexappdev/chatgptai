@@ -224,6 +224,7 @@ export async function POST(req: NextRequest) {
               tools,
               tool_choice: "auto",
               stream: false,
+              max_tokens: 2048,
             }),
           });
           if (probeRes.ok) {
@@ -319,6 +320,7 @@ export async function POST(req: NextRequest) {
             model,
             messages,
             stream: true,
+            max_tokens: 4096,
           }),
         });
       } catch (e) {
@@ -503,6 +505,7 @@ async function generateTitle(chatId: string, assistant: string, userContent: str
       body: JSON.stringify({
         model: TITLE_MODEL,
         stream: false,
+        max_tokens: 32,
         messages: [
           {
             role: "system",
