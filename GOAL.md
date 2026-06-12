@@ -13,8 +13,8 @@
 
 | # | id            | deps              | branch                     | status | merge SHA |
 |---|---------------|-------------------|----------------------------|--------|-----------|
-| 1 | scaffold-shell | —                | feature/scaffold-shell     | [ ]    |           |
-| 2 | db-schema      | CC-01            | feature/db-schema          | [ ]    |           |
+| 1 | scaffold-shell | —                | feature/scaffold-shell     | [x]    | PR #1     |
+| 2 | db-schema      | CC-01            | feature/db-schema          | [x]    | PR #2     |
 | 3 | chat-core      | CC-02            | feature/chat-core          | [ ]    |           |
 | 4 | recents-history | CC-03           | feature/recents-history    | [ ]    |           |
 | 5 | canvas         | CC-03            | feature/canvas             | [ ]    |           |
