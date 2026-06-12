@@ -85,7 +85,9 @@ export function ChatView({
       )}
 
       <Composer
-        onSend={(text) => send({ message: text, model })}
+        onSend={({ text, skillSlug }) =>
+          send({ message: text, model, skillSlug })
+        }
         onStop={stop}
         streaming={streaming}
       />
