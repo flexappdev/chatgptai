@@ -58,7 +58,12 @@ export function useChatStream(opts: {
   }, []);
 
   const send = useCallback(
-    async (input: { message: string; model: string; skillSlug?: string }) => {
+    async (input: {
+      message: string;
+      model: string;
+      skillSlug?: string;
+      enabledTools?: string[];
+    }) => {
       if (streaming || !input.message.trim()) return;
       const userId = crypto.randomUUID();
       const assistantId = crypto.randomUUID();
@@ -82,6 +87,7 @@ export function useChatStream(opts: {
             message: input.message,
             model: input.model,
             skillSlug: input.skillSlug,
+            enabledTools: input.enabledTools,
           }),
           signal: controller.signal,
         });

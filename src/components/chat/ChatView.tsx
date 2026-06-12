@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { MessageList } from "./MessageList";
 import { Composer } from "./Composer";
 import { ModelPicker } from "./ModelPicker";
+import { ToolsPopover, type ConnectedConnector } from "./ToolsPopover";
 import { useChatStream, type ClientMessage } from "@/hooks/useChatStream";
 import { DEFAULT_MODEL } from "@/lib/openrouter";
 
@@ -23,6 +24,24 @@ export function ChatView({
 }) {
   const router = useRouter();
   const [model, setModel] = useState<string>(initialModel ?? DEFAULT_MODEL);
+  const [available, setAvailable] = useState<ConnectedConnector[]>([]);
+  const [enabledTools, setEnabledTools] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    fetch("/api/connectors/connected")
+      .then((r) => r.json())
+      .then((j) => setAvailable(j.connectors ?? []))
+      .catch(() => setAvailable([]));
+  }, []);
+
+  const toggleTool = (provider: string) => {
+    setEnabledTools((s) => {
+      const next = new Set(s);
+      if (next.has(provider)) next.delete(provider);
+      else next.add(provider);
+      return next;
+    });
+  };
 
   const { messages, streaming, send, stop } = useChatStream({
     initialMessages,
@@ -50,8 +69,21 @@ export function ChatView({
           background: "var(--bg)",
         }}
       >
-        <div style={{ maxWidth: 760, margin: "0 auto" }}>
+        <div
+          style={{
+            maxWidth: 760,
+            margin: "0 auto",
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
           <ModelPicker value={model} onChange={onModelChange} />
+          <ToolsPopover
+            available={available}
+            enabled={enabledTools}
+            onToggle={toggleTool}
+          />
         </div>
       </div>
 
@@ -86,7 +118,12 @@ export function ChatView({
 
       <Composer
         onSend={({ text, skillSlug }) =>
-          send({ message: text, model, skillSlug })
+          send({
+            message: text,
+            model,
+            skillSlug,
+            enabledTools: Array.from(enabledTools),
+          })
         }
         onStop={stop}
         streaming={streaming}
