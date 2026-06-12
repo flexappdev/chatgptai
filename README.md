@@ -79,9 +79,18 @@ Apply with `/abc-supabase chatgptai migrate <file>`.
 
 - [x] 3 Supabase migrations applied to `tciqizkiseraumwdzxya` via Management API (8 tables, RLS, storage bucket, GIN FTS, pg_trgm) — 2026-06-12
 - [x] Vercel project linked to matsiems team, 5 prod env vars synced, first deploy LIVE — 2026-06-12
+- [x] Prod OpenRouter round-trip verified end-to-end via `scripts/test-prod-chat.mjs` (create user → sign in → SSE stream `/api/chat` → assert reply → clean up). Default model `anthropic/claude-sonnet-4-6`. Cost per smoke ≈ $0.0002.
 - [ ] Enable Google OAuth provider in Supabase dashboard (manual)
 - [ ] `/abc-ga sync chatgptai G-XXXX` once a GA4 measurement id is allocated
 - [ ] Optional: `BRAVE_API_KEY` in Vercel env to flip web_search from demo → live
+
+### Smoke test
+
+```bash
+node scripts/test-prod-chat.mjs https://chatgptai-three.vercel.app
+```
+
+Should print `PASS: OpenRouter round-trip through chatgptai prod is green.`
 
 ## Open follow-ups
 
