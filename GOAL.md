@@ -15,13 +15,13 @@
 |---|---------------|-------------------|----------------------------|--------|-----------|
 | 1 | scaffold-shell | —                | feature/scaffold-shell     | [x]    | PR #1     |
 | 2 | db-schema      | CC-01            | feature/db-schema          | [x]    | PR #2     |
-| 3 | chat-core      | CC-02            | feature/chat-core          | [ ]    |           |
-| 4 | recents-history | CC-03           | feature/recents-history    | [ ]    |           |
-| 5 | canvas         | CC-03            | feature/canvas             | [ ]    |           |
-| 6 | projects       | CC-03            | feature/projects           | [ ]    |           |
-| 7 | skills         | CC-03, CC-06     | feature/skills             | [ ]    |           |
-| 8 | connectors     | CC-03            | feature/connectors         | [ ]    |           |
-| 9 | polish-pass    | ALL              | feature/polish-pass        | [ ]    |           |
+| 3 | chat-core      | CC-02            | feature/chat-core          | [x]    | PR #3     |
+| 4 | recents-history | CC-03           | feature/recents-history    | [x]    | PR #4     |
+| 5 | canvas         | CC-03            | feature/canvas             | [x]    | PR #5     |
+| 6 | projects       | CC-03            | feature/projects           | [x]    | PR #6     |
+| 7 | skills         | CC-03, CC-06     | feature/skills             | [x]    | PR #7     |
+| 8 | connectors     | CC-03            | feature/connectors         | [x]    | PR #8     |
+| 9 | polish-pass    | ALL              | feature/polish-pass        | [x]    | PR #9     |
 
 After CC-09 merges: `/abc-cleanup` → `/abc-uxd-audit` → `/abc-playwright run smoke` → `/abc-ga sync` → `/abc-vercel deploy --prod` → README → registry `live_url` → final `/push`.
 
