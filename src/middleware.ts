@@ -3,7 +3,15 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 
 type CookieSet = { name: string; value: string; options?: CookieOptions };
 
-const PUBLIC_ROUTES = ["/login", "/auth/callback"];
+const PUBLIC_ROUTES = ["/login", "/auth/callback", "/not-authorized"];
+
+function allowedEmails(): string[] {
+  const raw = process.env.ALLOWED_EMAILS ?? "mat@matsiems.com";
+  return raw
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
 
 export async function middleware(request: NextRequest) {
   const response = NextResponse.next({ request });
@@ -43,6 +51,19 @@ export async function middleware(request: NextRequest) {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("next", request.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
+  }
+
+  // Allowlist gate: bounce signed-in users whose email isn't on the list.
+  // Sign them out and redirect to /not-authorized so they don't loop.
+  if (user) {
+    const allowed = allowedEmails();
+    const email = (user.email ?? "").toLowerCase();
+    if (allowed.length > 0 && !allowed.includes(email)) {
+      await supabase.auth.signOut();
+      if (request.nextUrl.pathname !== "/not-authorized") {
+        return NextResponse.redirect(new URL("/not-authorized", request.url));
+      }
+    }
   }
 
   if (user && request.nextUrl.pathname === "/login") {
